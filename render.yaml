@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: onenet-push
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: DINGTALK_WEBHOOK
+        sync: false
