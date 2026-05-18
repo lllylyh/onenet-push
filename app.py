@@ -5,7 +5,7 @@ import os
 
 app = Flask(__name__)
 
-# ✅ 钉钉机器人Webhook地址（通过环境变量读取，也可以直接写在这里）
+# ✅ 钉钉机器人Webhook地址
 DINGTALK_WEBHOOK = os.environ.get(
     'DINGTALK_WEBHOOK',
     'https://oapi.dingtalk.com/robot/send?access_token=你的Token'
@@ -32,21 +32,26 @@ def push():
         else:
             device_data = msg_str
 
+        print(f'[解析后] {json.dumps(device_data, ensure_ascii=False)}')
+
         # 构建钉钉消息
         content = format_message(device_data)
+        print(f'[将发送的内容] {content}')  # ← 关键：看这里
+
         ding_msg = {
             'msgtype': 'text',
             'text': {'content': content}
         }
 
+        print(f'[钉钉请求体] {json.dumps(ding_msg, ensure_ascii=False)}')
+
         # 发送到钉钉
         resp = req.post(DINGTALK_WEBHOOK, json=ding_msg, timeout=3)
-        print(f'[钉钉] {resp.text}')
+        print(f'[钉钉响应] {resp.text}')
 
     except Exception as e:
         print(f'[错误] {e}')
 
-    # 必须返回200，否则OneNET会重试
     return Response('ok', status=200, content_type='text/plain')
 
 def format_message(data):
@@ -54,6 +59,8 @@ def format_message(data):
     msg_type = data.get('type', '')
     device_name = data.get('device_name', '未知设备')
     params = data.get('params', {})
+
+    print(f'[format] type={msg_type}, device={device_name}, params={params}')
 
     if msg_type == 'event':
         identifier = data.get('identifier', '')
@@ -72,7 +79,8 @@ def format_message(data):
         return '\n'.join(lines)
 
     else:
-        return f'【OneNET消息】\n{json.dumps(data, ensure_ascii=False, indent=2)}'
+        # 如果没有识别的类型，直接返回原始数据
+        return f'【OneNET消息】\n{json.dumps(data, ensure_ascii=False)}'
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000)
