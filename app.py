@@ -28,18 +28,20 @@ def push():
             device_data = msg_str
 
         content = format_message(device_data)
-        print(f'[将发送的内容] {content}')
 
-        # ⭐ 先都发送，测试用
-        if content:
-            ding_msg = {
-                'msgtype': 'text',
-                'text': {'content': content}
-            }
-            resp = req.post(DINGTALK_WEBHOOK, json=ding_msg, timeout=3)
-            print(f'[钉钉响应] {resp.text}')
-        else:
-            print('[内容为空，跳过]')
+        # ⭐ 不是超速就不发钉钉，直接返回
+        if content is None:
+            print('[未超速，跳过推送]')
+            return Response('ok', status=200, content_type='text/plain')
+
+        print(f'[超速告警] {content}')
+
+        ding_msg = {
+            'msgtype': 'text',
+            'text': {'content': content}
+        }
+        resp = req.post(DINGTALK_WEBHOOK, json=ding_msg, timeout=3)
+        print(f'[钉钉响应] {resp.text}')
 
     except Exception as e:
         print(f'[错误] {e}')
@@ -48,25 +50,22 @@ def push():
 
 
 def format_message(data):
-    """格式化消息"""
+    """只有超速时才返回消息，否则返回 None"""
     data_content = data.get('data', {})
     params = data_content.get('params', {})
 
     is_over_speed = params.get('isOverSpeed', {})
     max_speed_val = params.get('maxSpeed', {})
-    speed_limit_val = params.get('speedLimit', {})
 
     speed = max_speed_val.get('value', 0) if isinstance(max_speed_val, dict) else 0
-    limit = speed_limit_val.get('value', 0) if isinstance(speed_limit_val, dict) else 0
     over_speed = is_over_speed.get('value', False) if isinstance(is_over_speed, dict) else False
 
-    print(f'[format] speed={speed}, limit={limit}, overSpeed={over_speed}')
+    print(f'[format] speed={speed}, overSpeed={over_speed}')
 
-    # ⭐ 超速和未超速都包含"超速"关键词，确保钉钉不拦截
     if over_speed:
         return f'西区食堂路口有超速行为，速度为{speed}km/h'
     else:
-        return f'西区食堂路口超速检测正常，当前车速{speed}km/h，限速{limit}km/h'
+        return None  # 未超速，不推送
 
 
 if __name__ == '__main__':
