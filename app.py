@@ -28,6 +28,12 @@ def push():
             device_data = msg_str
 
         content = format_message(device_data)
+
+        # ⭐ 未超速时不发送钉钉消息，直接返回
+        if content is None:
+            print('[未超速，跳过推送]')
+            return Response('ok', status=200, content_type='text/plain')
+
         print(f'[将发送的内容] {content}')
 
         ding_msg = {
@@ -45,28 +51,24 @@ def push():
 
 
 def format_message(data):
-    """格式化消息 - 确保每条消息都包含'超速'关键词"""
-    device_name = data.get('deviceName', '未知设备')
+    """格式化消息 - 超速时返回消息，未超速时返回 None"""
     data_content = data.get('data', {})
     params = data_content.get('params', {})
 
     # 提取数据
     is_over_speed = params.get('isOverSpeed', {})
     max_speed_val = params.get('maxSpeed', {})
-    speed_limit_val = params.get('speedLimit', {})
 
-    # 取出实际值
     speed = max_speed_val.get('value', 0) if isinstance(max_speed_val, dict) else 0
-    limit = speed_limit_val.get('value', 0) if isinstance(speed_limit_val, dict) else 0
     over_speed = is_over_speed.get('value', False) if isinstance(is_over_speed, dict) else False
 
-    print(f'[format] speed={speed}, limit={limit}, overSpeed={over_speed}')
+    print(f'[format] speed={speed}, overSpeed={over_speed}')
 
-    # ⭐ 无论是否超速，消息都必须包含"超速"关键词
+    # ⭐ 超速才推送，未超速返回 None
     if over_speed:
         return f'西区食堂路口有超速行为，速度为{speed}km/h'
     else:
-        return f'西区食堂路口超速检测正常，当前车速{speed}km/h，限速{limit}km/h'
+        return None
 
 
 if __name__ == '__main__':
