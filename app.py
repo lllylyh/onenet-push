@@ -43,28 +43,31 @@ def push():
 
     return Response('ok', status=200, content_type='text/plain')
 
+
 def format_message(data):
-    """格式化设备数据为可读消息"""
-    notify_type = data.get('notifyType', '')
+    """格式化消息 - 确保每条消息都包含'超速'关键词"""
     device_name = data.get('deviceName', '未知设备')
     data_content = data.get('data', {})
     params = data_content.get('params', {})
 
-    print(f'[format] notifyType={notify_type}, device={device_name}, params={params}')
-
-    # 获取超速相关数据
+    # 提取数据
     is_over_speed = params.get('isOverSpeed', {})
-    max_speed = params.get('maxSpeed', {})
-    speed_limit = params.get('speedLimit', {})
+    max_speed_val = params.get('maxSpeed', {})
+    speed_limit_val = params.get('speedLimit', {})
 
-    # 如果检测到超速，发送告警消息
-    if is_over_speed.get('value', False) == True:
-        speed = max_speed.get('value', 0)
-        limit = speed_limit.get('value', 0)
+    # 取出实际值
+    speed = max_speed_val.get('value', 0) if isinstance(max_speed_val, dict) else 0
+    limit = speed_limit_val.get('value', 0) if isinstance(speed_limit_val, dict) else 0
+    over_speed = is_over_speed.get('value', False) if isinstance(is_over_speed, dict) else False
+
+    print(f'[format] speed={speed}, limit={limit}, overSpeed={over_speed}')
+
+    # ⭐ 无论是否超速，消息都必须包含"超速"关键词
+    if over_speed:
         return f'西区食堂路口有超速行为，速度为{speed}km/h'
+    else:
+        return f'西区食堂路口超速检测正常，当前车速{speed}km/h，限速{limit}km/h'
 
-    # 其他情况，返回JSON（方便调试）
-    return f'【OneNET消息】\n{json.dumps(data, ensure_ascii=False)}'
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=8000)
